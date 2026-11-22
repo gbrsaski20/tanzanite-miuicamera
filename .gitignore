@@ -1,0 +1,15 @@
+# Donor binaries and generated flashable zips — never commit
+camera/files/
+*.so
+*.apk
+*.zip
+*.img
+*.bin
+
+# Python / local state
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+.DS_Store
