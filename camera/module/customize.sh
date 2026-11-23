@@ -50,9 +50,10 @@ if [ -d /data/adb/modules/miuicamera_universal ]; then
 fi
 
 # ------------------------------------------------------------------- file perm
-set_perm_recursive "$MODPATH/system/priv-app/MiuiCamera" 0 0 0755 0644
-set_perm_recursive "$MODPATH/system/lib64" 0 0 0755 0644
-set_perm_recursive "$MODPATH/system/etc" 0 0 0755 0644
+set_perm_recursive "$MODPATH/system/priv-app/MiuiCamera" 0 0 0755 0644 u:object_r:system_file:s0
+set_perm_recursive "$MODPATH/system/lib64" 0 0 0755 0644 u:object_r:system_file:s0
+set_perm_recursive "$MODPATH/system/etc" 0 0 0755 0644 u:object_r:system_file:s0
+chcon -R u:object_r:system_file:s0 "$MODPATH/system" 2>/dev/null || true
 set_perm "$MODPATH/slowmo_watch.sh" 0 0 0755
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755

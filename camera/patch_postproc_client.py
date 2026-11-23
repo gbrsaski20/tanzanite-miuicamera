@@ -8,6 +8,7 @@ is made.  Exports and ELF size stay unchanged.
 """
 import argparse
 import struct
+from pathlib import Path
 
 STUBS = {
     0x1533c: 'MiPostProcSessionIntf::initialize',
@@ -30,7 +31,7 @@ STUB = struct.pack('<II', 0x52800000, 0xd65f03c0)  # mov w0,#0 ; ret
 
 def patch(data: bytes) -> bytes:
     out = bytearray(data)
-    for addr, name in STUBS.items():
+    for addr in STUBS:
         if out[addr:addr + 8] == STUB:
             continue
         out[addr:addr + 8] = STUB
@@ -42,8 +43,8 @@ def main():
     ap.add_argument('src', help='original libmicampostproc_client.so')
     ap.add_argument('dst', help='output patched library')
     a = ap.parse_args()
-    data = open(a.src, 'rb').read()
-    open(a.dst, 'wb').write(patch(data))
+    data = Path(a.src).read_bytes()
+    Path(a.dst).write_bytes(patch(data))
     print(f'patched {len(STUBS)} functions -> {a.dst}')
 
 

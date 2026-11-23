@@ -14,7 +14,6 @@ Section headers are included because Android's linker rejects ET_DYN files with
 e_shentsize == 0.
 """
 import hashlib
-import os
 import struct
 from pathlib import Path
 
