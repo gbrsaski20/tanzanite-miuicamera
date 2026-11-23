@@ -10,7 +10,7 @@ Working sejak v1.9:
 
 - Preview kamera **live** (tidak hitam)
 - Foto tersimpan normal, termasuk di **mode malam / Night**
-- Video slow-motion 120fps diputar **4× lebih lambat** (retime otomatis)
+- Video slow-motion 120fps: file di-retime otomatis, **tetapi perilaku di galeri tidak konsisten** (lihat catatan di bawah)
 - Tidak ada force close setelah jepret
 - Modul bisa dipasang lewat **Magisk** atau **KernelSU**
 
@@ -29,7 +29,11 @@ Foto tetap dihasilkan oleh HAL kamera; yang dilewati hanya jalur post-processing
 
 ### Slow motion
 
-Vendor tanzanite tidak punya tag `com.xiaomi.camera.supportedfeatures.CamSupportedSlowMotion`. MiuiCamera tetap merekam HSR 120fps (HAL mendukung 1280x720@120), tetapi tidak menulis metadata `SlowMotion_Data`, sehingga galeri memutar file 120fps itu kecepatan normal. `slowmo_watch.sh` memantau `DCIM/Camera/*_HSR_120.mp4` dan menulis ulang timing `stts` (750 → 3000 tick @90000 timescale) sehingga video menjadi 30fps / 4× lambat. Proses ini butuh beberapa detik hingga ~30 detik tergantung jumlah entri.
+Vendor tanzanite tidak punya tag `com.xiaomi.camera.supportedfeatures.CamSupportedSlowMotion`. MiuiCamera tetap merekam HSR 120fps (HAL mendukung 1280x720@120), tetapi tidak menulis metadata `SlowMotion_Data`, sehingga galeri memutar file 120fps itu kecepatan normal.
+
+`slowmo_watch.sh` memantau `DCIM/Camera/*_HSR_120.mp4`, lalu menulis ulang timing `stts` (750 → 3000 tick @90000 timescale), `mdhd`/`tkhd`/`mvhd`, dan menonaktifkan track audio. Di level file, hasilnya terbaca sebagai 30fps / 4× lambat (durasi 12,36 s → 49,46 s saat diperiksa langsung dengan parser MP4). Proses ini butuh beberapa detik hingga ~30 detik tergantung jumlah entri.
+
+**Status saat ini: dibiarkan apa adanya.** Meski timing di file sudah diubah, galeri/pemutar masih menampilkan durasi lama (mis. rekaman 8 detik tetap terlihat 8 detik) — kemungkinan karena MediaStore meng-cache durasi sebelum file di-patch. Tidak ada FC, jadi eksperimen ini sengaja tidak dilanjutkan. Jangan menganggap fitur slow-motion sudah benar-benar berfungsi.
 
 ## Build
 
@@ -76,7 +80,7 @@ Prebuilt: [`miuicamera_tanzanite_v1.9_ksu_magisk.zip`](https://github.com/gbrsas
 
 - Efek MIA (beauty, HDR fusion) dimatikan.
 - Mode malam bisa jepret tanpa FC, tetapi tanpa fusion SuperNight Xiaomi — hasilnya foto low-light langsung dari HAL.
-- Slow motion adalah retime 120fps → 30fps, bukan interpolasi/MEIN Xiaomi; track audio dinonaktifkan agar tidak terputus di tengah.
+- Slow motion **tidak benar-benar beres**: file di-retime 120fps → 30fps dan audio dimatikan, tetapi galeri masih menampilkan durasi lama. Dibiarkan karena tidak menyebabkan FC.
 - MFNR MediaTek dimatikan.
 - Foto adalah keluaran langsung HAL.
 - Belum diuji di ROM selain Halcyon/AOSP tanzanite.
