@@ -60,6 +60,9 @@ if [ -n "$PKGPATH" ] && [ "$PKGPATH" != "$APK_ABS" ]; then
         DIR=$(dirname "$REL")
         mkdir -p "$MODDIR/$PART/$DIR" 2>/dev/null
         : > "$MODDIR/$PART/$DIR/.replace" 2>/dev/null
+        chmod 755 "$MODDIR/$PART/$DIR" 2>/dev/null
+        chmod 644 "$MODDIR/$PART/$DIR/.replace" 2>/dev/null
+        chcon -R u:object_r:system_file:s0 "$MODDIR/$PART" 2>/dev/null || true
         if [ -f "$MODDIR/$PART/$DIR/.replace" ]; then
             NEEDS_REBOOT=1
             echo "masked conflicting package at $PKGPATH -> $PART/$DIR/.replace" >> "$LOG"

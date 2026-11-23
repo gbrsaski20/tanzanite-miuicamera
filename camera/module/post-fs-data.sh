@@ -21,6 +21,12 @@ MODDIR=${0%/*}
 LOG=/data/local/tmp/miuicamera_boot.log
 : > "$LOG" 2>/dev/null
 
+# Ensure overlay files are world-readable and correctly labeled for Android 15/16/17
+if [ -d "$MODDIR/system" ]; then
+    chmod -R u=rwX,go=rX "$MODDIR/system" 2>/dev/null || true
+    chcon -R u:object_r:system_file:s0 "$MODDIR/system" 2>/dev/null || true
+fi
+
 RP=""
 for c in /data/adb/magisk/resetprop /data/adb/ksu/bin/resetprop \
          /data/adb/ap/bin/resetprop resetprop; do
