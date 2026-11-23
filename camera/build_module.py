@@ -53,6 +53,7 @@ STATIC = [
     'slowmo_watch.sh',
     'system/etc/default-permissions/default-permissions-miuicamera.xml',
     'system/etc/permissions/privapp-permissions-miuicamera.xml',
+    'system/etc/public.libraries-xiaomi.txt',
     'system/etc/sysconfig/miuicamera-hiddenapi-package-whitelist.xml',
 ]
 
@@ -69,7 +70,7 @@ def main():
     ap.add_argument('--files', type=Path, default=ROOT / 'files',
                     help='directory with donor binaries')
     ap.add_argument('--output', type=Path,
-                    default=REPO / 'miuicamera_universal_v2.0_ksu_magisk.zip')
+                    default=REPO / 'miuicamera_universal_v2.1_ksu_magisk.zip')
     ap.add_argument('--no-patch', action='store_true',
                     help='skip the framework compat patch (debug only)')
     a = ap.parse_args()
@@ -102,6 +103,13 @@ def main():
         ('system/lib64/libmicampostproc_client.so', client),
         ('system/lib64/libcamera_ispinterface_jni.xiaomi.so', isp_stub),
     ]
+
+    # Static RRO the donor ROM ships next to MiuiCamera (launcher icon overrides
+    # for com.android.camera).  Optional: older donor dumps may not have it.
+    overlay = a.files / 'MiuiCameraOverlayFlourite.apk'
+    if overlay.is_file():
+        entries.append(('product/overlay/MiuiCameraOverlayFlourite.apk',
+                        overlay.read_bytes()))
 
     # The APK has extractNativeLibs=false, so its own lib/arm64-v8a wins for
     # anything bundled inside it.  The Xiaomi JNI libs are NOT bundled, they are

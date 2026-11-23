@@ -59,6 +59,27 @@ set_perm "$MODPATH/service.sh" 0 0 0755
 set_perm "$MODPATH/diag.sh" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 
+# ------------------------------------------------ public.libraries-xiaomi.txt
+# MiuiCamera loads its two JNI libraries by bare name and they are not inside
+# the APK, so /system/lib64 must advertise them as public.  If the ROM already
+# ships the file, keep its content and only append what is missing - replacing
+# it blindly would drop other libraries the ROM registered.
+PL="$MODPATH/system/etc/public.libraries-xiaomi.txt"
+ROM_PL=/system/etc/public.libraries-xiaomi.txt
+if [ -f "$ROM_PL" ]; then
+    cp -f "$ROM_PL" "$PL" 2>/dev/null
+fi
+for lib in libcamera_algoup_jni.xiaomi.so libcamera_mianode_jni.xiaomi.so; do
+    grep -qx "$lib" "$PL" 2>/dev/null || echo "$lib" >> "$PL"
+done
+ui_print "- public.libraries-xiaomi.txt: $(wc -l < "$PL" 2>/dev/null | tr -d ' ') entri"
+
+# ------------------------------------------------------------- icon overlay
+if [ -f "$MODPATH/product/overlay/MiuiCameraOverlayFlourite.apk" ]; then
+    set_perm_recursive "$MODPATH/product/overlay" 0 0 0755 0644
+    ui_print "- Static RRO icon overlay disertakan (dari ROM donor)."
+fi
+
 ui_print " "
 ui_print "- APK sudah di-patch agar tidak butuh CameraCharacteristics.getNativeCopy()"
 ui_print "  (penyebab force close di ROM yang framework.jar-nya di-strip)."

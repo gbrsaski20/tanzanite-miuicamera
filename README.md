@@ -4,7 +4,7 @@ Port **MiuiCamera (HyperOS Camera)** ke **Redmi Note 14 4G** (`tanzanite`, MT678
 
 Repo ini berdiri sendiri dan **tidak** berisi tooling overclock. Untuk overclock, lihat repo terpisah `tanzanite-overclock`.
 
-## Status v2.0 — satu modul untuk semua ROM
+## Status v2.1 — satu modul untuk semua ROM
 
 Sejak v2.0 hanya ada **satu zip**. Tidak ada lagi build "normal" vs "EvoX".
 
@@ -16,6 +16,21 @@ Sejak v2.0 hanya ada **satu zip**. Tidak ada lagi build "normal" vs "EvoX".
 | Jalan di ROM yang `framework.jar`-nya di-strip | OK (APK sudah di-patch, lihat bawah) |
 | Icon muncul di semua ROM | OK **kalau** syarat overlay terpenuhi (lihat Peringatan) |
 | Slow motion 120fps | File di-retime, tapi galeri masih sering menampilkan durasi lama |
+
+## Root cause v2.1: file donor yang tidak ikut ke modul
+
+Gejala: kamera jalan di satu perangkat, tapi **force close** di perangkat lain dengan ROM yang sama. Setelah isi `system.img` donor (`flourite`) dibandingkan satu per satu dengan isi modul, ada dua file yang tertinggal:
+
+| File di ROM donor | Akibat kalau tidak ada |
+|---|---|
+| `/system/etc/public.libraries-xiaomi.txt` | `System.loadLibrary("camera_algoup_jni.xiaomi")` gagal → `UnsatisfiedLinkError` |
+| `/product/overlay/MiuiCameraOverlayFlourite.apk` | static RRO untuk `com.android.camera` (ikon launcher) tidak ada |
+
+Yang pertama itu penyebab FC-nya. APK memakai `extractNativeLibs=false`, jadi direktori library aplikasi adalah APK itu sendiri, sementara `libcamera_algoup_jni.xiaomi.so` dan `libcamera_mianode_jni.xiaomi.so` **tidak** ada di dalam APK — keduanya di `/system/lib64`. Aplikasi biasa tidak bisa me-resolve `/system/lib64` berdasarkan nama kecuali library-nya didaftarkan sebagai *public*, dan itulah fungsi file tersebut.
+
+Kegagalannya menipu: `static initializer` di `MiCamAlgoInterfaceJNI` dan `MiaNodeJNI` menangkap exception pertama dan cuma menulis log (`can not load library:...`), jadi app tetap terbuka. Begitu ada pemanggilan native method berikutnya, `UnsatisfiedLinkError` dilempar lagi — kali ini tanpa penangkap — dan app mati. Karena itu gejalanya "kadang sempat terbuka lalu FC", bukan gagal saat start.
+
+`customize.sh` sekarang menyalin versi ROM (kalau sudah ada) lalu hanya menambahkan entri yang belum ada, supaya library publik lain milik ROM tidak ikut hilang.
 
 ## Peringatan: KernelSU butuh metamodule
 
@@ -48,9 +63,7 @@ su -c "sh /data/adb/modules/miuicamera_tanzanite/diag.sh"
 
 ## Kenapa perlu di-port
 
-Donor yang dipakai adalah MiuiCamera dari LineageOS 24.0 `flourite` (Qualcomm, 2026-11-14). Vendor tanzanite (MediaTek) punya generasi MIA yang berbeda dan tidak menyediakan HIDL `vendor.xiaomi.hardware.campostproc@1.0`, jadi beberapa lapis crash harus ditangani:
-
-| Lapisan | Gejala | Perbaikan |
+Donor yang dipakai adalah MiuiCamera dari LineageOS 24.0 `flourite` (Qualcomm, 2026-11-14). Vendor tanzanite (MediaTek) punya generasi MIA yang berbeda dan tidak menyediakan HIDL `vendor.xiaomi.hardware.campostproc@1.0`, jadi beberapa lapis crash harus ditangani:| Lapisan | Gejala | Perbaikan |
 |---|---|---|
 | `libmicampostproc_client.so` (donor) | Null deref di `MiPostProcSessionIntf::initialize` / `preProcessFrame` | 14 fungsi session di-stub jadi `return 0` |
 | `libcamera_algoup_jni.xiaomi.so` | `MIAProcessFrame` langsung ke engine vendor → crash di `MiaFrameWrapper` | `processFrame`, `Jni_ProcessFrameWithSync_V10/V11` di-stub |
@@ -112,7 +125,7 @@ Lalu:
 
 ```sh
 cd camera
-python build_module.py --files files --output ../miuicamera_universal_v2.0_ksu_magisk.zip
+python build_module.py --files files --output ../miuicamera_universal_v2.1_ksu_magisk.zip
 ```
 
 Atau patch manual:
@@ -136,6 +149,8 @@ Offset patch spesifik untuk donor `flourite` 2026-11-14. Jangan pakai donor vers
 | `slowmo_watch.sh` | retime `*_HSR_120.mp4` (120fps → 30fps, 4× lambat) |
 | `diag.sh` | kolektor diagnosa manual → `/sdcard/micam_diag.txt` |
 | `uninstall.sh` | matikan watcher dan bersihkan state |
+| `system/etc/public.libraries-xiaomi.txt` | daftarkan dua JNI library Xiaomi sebagai *public* (wajib, lihat root cause v2.1) |
+| `product/overlay/MiuiCameraOverlayFlourite.apk` | static RRO ikon dari ROM donor |
 
 `ro.control_privapp_permissions=log` dipasang karena pada build `enforce`, priv-app yang meminta permission `signature|privileged` di luar whitelist akan **ditolak utuh saat boot scan** — package-nya di-skip tanpa dialog, icon tidak pernah muncul. Whitelist modul ini sudah lengkap untuk platform AOSP (12 permission privileged), tapi ROM bisa menambah/mengganti nama permission, jadi enforcement-nya dilonggarkan sebagai jaring pengaman.
 

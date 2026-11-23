@@ -1,6 +1,6 @@
 id=miuicamera_tanzanite
 name=MiuiCamera Universal (AOSP / HyperOS)
-version=2.0
-versionCode=20
+version=2.1
+versionCode=21
 author=gbrsaski20
-description=Satu modul MiuiCamera (com.android.camera) untuk semua ROM AOSP/LineageOS/EvoX/HyperOS di tanzanite. Framework compat (CameraCharacteristics.getNativeCopy) sudah di-patch langsung di APK, privapp whitelist lengkap, privapp enforcement dilonggarkan, deteksi overlay & konflik paket otomatis, laporan diagnosa di /sdcard/micam_status.txt.
+description=Satu modul MiuiCamera (com.android.camera) untuk semua ROM AOSP/LineageOS/EvoX/HyperOS di tanzanite. Framework compat (getNativeCopy) di-patch di APK, public.libraries-xiaomi.txt + static icon overlay dari ROM donor disertakan, privapp whitelist lengkap, privapp enforcement dilonggarkan, deteksi overlay & konflik paket otomatis, laporan diagnosa di /sdcard/micam_status.txt.

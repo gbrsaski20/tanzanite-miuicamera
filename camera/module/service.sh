@@ -114,6 +114,8 @@ fi
     echo "system overlay    : $OVERLAY   ($APK_ABS)"
     echo "privapp enforce   : $(getprop ro.control_privapp_permissions)"
     echo "package path      : ${PKGPATH:-<not installed>}"
+    echo "public libs file  : $([ -f /system/etc/public.libraries-xiaomi.txt ] && echo present || echo MISSING) $(grep -c xiaomi /system/etc/public.libraries-xiaomi.txt 2>/dev/null)"
+    echo "icon overlay      : $([ -f /product/overlay/MiuiCameraOverlayFlourite.apk ] && echo present || echo missing)"
     echo "sdk               : $(getprop ro.build.version.sdk)  rom: $(getprop ro.build.display.id)"
     echo
     if [ -z "$PKGPATH" ]; then
@@ -134,6 +136,13 @@ fi
         echo "     REBOOT sekali lagi, setelah itu modul yang menang."
     else
         echo "DIAGNOSA: OK - MiuiCamera dari modul aktif."
+    fi
+    if [ ! -f /system/etc/public.libraries-xiaomi.txt ]; then
+        echo
+        echo "PERINGATAN: /system/etc/public.libraries-xiaomi.txt TIDAK ADA."
+        echo "  libcamera_algoup_jni.xiaomi / libcamera_mianode_jni.xiaomi tidak"
+        echo "  bisa di-load, dan app akan force close saat native method dipanggil."
+        echo "  Berarti overlay /system tidak jalan - cek metamodule."
     fi
     echo
     echo "--- boot props ---"
