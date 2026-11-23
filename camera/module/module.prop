@@ -1,6 +1,6 @@
 id=miuicamera_tanzanite
 name=MiuiCamera (HyperOS Camera) for tanzanite
-version=1.4
-versionCode=5
+version=1.5
+versionCode=6
 author=gbrsaski20
-description=Port MiuiCamera (com.android.camera) ke Halcyon/AOSP tanzanite. Kompatibel KernelSU & Magisk. MIA session + frame ops di-stub, MFNR di-skip agar tidak crash di vendor tanzanite.
+description=Port MiuiCamera (com.android.camera) ke Halcyon/AOSP tanzanite. Kompatibel KernelSU & Magisk. MIA + frame ops di-stub, MFNR di-skip, IspInterface JNI di-stub agar Night Mode tidak FC.

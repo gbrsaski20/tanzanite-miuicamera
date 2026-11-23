@@ -10,8 +10,9 @@ are licensed to use (see README) and place them in camera/files/:
     libmicampostproc_client.so
     vendor.xiaomi.hardware.campostproc@1.0.so
 
-The two incompatible MIA libraries are patched in memory; everything else is
-copied verbatim.  No external zip tool is required.
+The two incompatible MIA libraries are patched in memory, a small IspInterface
+JNI stub is generated for night mode, and everything else is copied verbatim.
+No external zip tool is required.
 """
 import argparse
 import hashlib
@@ -19,6 +20,7 @@ import sys
 import zipfile
 from pathlib import Path
 
+from build_isp_stub import build_stub
 from patch_algoup_jni import patch as patch_algoup
 from patch_postproc_client import patch as patch_client
 
@@ -49,7 +51,7 @@ def main():
     ap.add_argument('--files', type=Path, default=ROOT / 'files',
                     help='directory with donor binaries')
     ap.add_argument('--output', type=Path,
-                    default=REPO / 'miuicamera_tanzanite_v1.4_ksu_magisk.zip')
+                    default=REPO / 'miuicamera_tanzanite_v1.5_ksu_magisk.zip')
     a = ap.parse_args()
 
     missing = [n for n in DONOR if not (a.files / n).is_file()]
@@ -58,6 +60,7 @@ def main():
 
     algoup = patch_algoup((a.files / 'libcamera_algoup_jni.xiaomi.so').read_bytes())
     client = patch_client((a.files / 'libmicampostproc_client.so').read_bytes())
+    isp_stub = build_stub()
 
     entries = []
     for rel in STATIC:
@@ -66,6 +69,7 @@ def main():
     entries += [
         ('system/lib64/libcamera_algoup_jni.xiaomi.so', algoup),
         ('system/lib64/libmicampostproc_client.so', client),
+        ('system/lib64/libcamera_ispinterface_jni.xiaomi.so', isp_stub),
         ('system/lib64/libcamera_mianode_jni.xiaomi.so',
          (a.files / 'libcamera_mianode_jni.xiaomi.so').read_bytes()),
         ('system/lib64/vendor.xiaomi.hardware.campostproc@1.0.so',
@@ -74,6 +78,7 @@ def main():
          (a.files / 'MiuiCamera.apk').read_bytes()),
         ('system/priv-app/MiuiCamera/lib/arm64/libcamera_algoup_jni.xiaomi.so', algoup),
         ('system/priv-app/MiuiCamera/lib/arm64/libmicampostproc_client.so', client),
+        ('system/priv-app/MiuiCamera/lib/arm64/libcamera_ispinterface_jni.xiaomi.so', isp_stub),
         ('system/priv-app/MiuiCamera/lib/arm64/libcamera_mianode_jni.xiaomi.so',
          (a.files / 'libcamera_mianode_jni.xiaomi.so').read_bytes()),
     ]
