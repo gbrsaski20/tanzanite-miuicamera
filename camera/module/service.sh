@@ -53,8 +53,11 @@ echo "appops: $(appops set $PKG MANAGE_EXTERNAL_STORAGE allow 2>&1)" >> "$LOG"
 # Retimed HSR files to 30fps (4x slow) in the background.
 SLOWMO="$MODDIR/slowmo_watch.sh"
 if [ -f "$SLOWMO" ]; then
-    sh "$SLOWMO" >> /data/local/tmp/miuicamera_slowmo_watch.log 2>&1 &
-    echo "slowmo watcher started" >> "$LOG"
+    # KSU/Magisk service scripts run without sdcard_rw supplementary groups;
+    # go through su so the watcher can read/write /sdcard/DCIM.
+    SU=$(command -v su 2>/dev/null || echo /system/bin/su)
+    "$SU" -G 1015 -G 1028 -c "sh $SLOWMO" >> /data/local/tmp/miuicamera_slowmo_watch.log 2>&1 &
+    echo "slowmo watcher started via su" >> "$LOG"
 fi
 
 echo "done" >> "$LOG"

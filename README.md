@@ -6,7 +6,7 @@ Repo ini berdiri sendiri dan **tidak** berisi tooling overclock. Untuk overclock
 
 ## Status
 
-Working sejak v1.6:
+Working sejak v1.9:
 
 - Preview kamera **live** (tidak hitam)
 - Foto tersimpan normal, termasuk di **mode malam / Night**
@@ -47,7 +47,7 @@ Lalu:
 
 ```sh
 cd camera
-python build_module.py --files files --output ../miuicamera_tanzanite_v1.6_ksu_magisk.zip
+python build_module.py --files files --output ../miuicamera_tanzanite_v1.9_ksu_magisk.zip
 ```
 
 Atau patch manual:
@@ -66,11 +66,11 @@ Flash zip lewat aplikasi Magisk atau KernelSU, lalu reboot. Modul otomatis:
 
 - memberi runtime permission MiuiCamera
 - menetapkan `debug.anc.yuvsiq.emptysdk=1`
-- menjalankan watcher slow-motion yang me-retime file `*_HSR_120.mp4` baru
+- menjalankan watcher slow-motion lewat `su` (dengan group `sdcard_rw`) yang me-retime file `*_HSR_120.mp4` baru
 
 Jangan pasang dua kali di device yang sudah memakai modul ini lewat `meta-overlayfs` — bisa dobel overlay.
 
-Prebuilt: [`miuicamera_tanzanite_v1.6_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.2.0/miuicamera_tanzanite_v1.6_ksu_magisk.zip)
+Prebuilt: [`miuicamera_tanzanite_v1.9_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.3.0/miuicamera_tanzanite_v1.9_ksu_magisk.zip)
 
 ## Keterbatasan
 

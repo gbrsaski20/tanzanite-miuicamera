@@ -31,6 +31,8 @@ patch_one() {
     _first=$((16#$(u32hex "$_file" $((_stts + 12 + 4)))))
     # already retimed
     [ "$_first" -ge 3000 ] && return 0
+    # claim the file before the slow byte loop so other polls skip it
+    touch "$MARKDIR/$_base"
 
     _total=0
     _i=0
