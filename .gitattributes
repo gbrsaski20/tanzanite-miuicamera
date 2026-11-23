@@ -1,8 +1,11 @@
 # Shell scripts are executed by Android's sh: CRLF breaks them (it already
-# happened once with slowmo_watch.sh).  Force LF in the repository and in the
-# working tree regardless of core.autocrlf.
+# happened once with slowmo_watch.sh).  public.libraries-xiaomi.txt is parsed by
+# the dynamic linker, where a trailing \r turns "libfoo.so" into "libfoo.so\r"
+# and the library is never found.  Force LF everywhere regardless of
+# core.autocrlf.
 *.sh    text eol=lf
 *.prop  text eol=lf
 *.py    text eol=lf
 *.md    text eol=lf
 *.xml   text eol=lf
+*.txt   text eol=lf
