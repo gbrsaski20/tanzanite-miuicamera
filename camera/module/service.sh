@@ -47,4 +47,14 @@ do
 done
 
 echo "appops: $(appops set $PKG MANAGE_EXTERNAL_STORAGE allow 2>&1)" >> "$LOG"
+
+# tanzanite does not advertise CamSupportedSlowMotion, so MiuiCamera records a
+# 120fps HSR track but omits SlowMotion_Data; gallery plays it at normal speed.
+# Retimed HSR files to 30fps (4x slow) in the background.
+SLOWMO="$MODDIR/slowmo_watch.sh"
+if [ -f "$SLOWMO" ]; then
+    sh "$SLOWMO" >> /data/local/tmp/miuicamera_slowmo_watch.log 2>&1 &
+    echo "slowmo watcher started" >> "$LOG"
+fi
+
 echo "done" >> "$LOG"

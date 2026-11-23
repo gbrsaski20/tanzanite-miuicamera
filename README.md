@@ -6,10 +6,11 @@ Repo ini berdiri sendiri dan **tidak** berisi tooling overclock. Untuk overclock
 
 ## Status
 
-Working sejak v1.5:
+Working sejak v1.6:
 
 - Preview kamera **live** (tidak hitam)
 - Foto tersimpan normal, termasuk di **mode malam / Night**
+- Video slow-motion 120fps diputar **4× lebih lambat** (retime otomatis)
 - Tidak ada force close setelah jepret
 - Modul bisa dipasang lewat **Magisk** atau **KernelSU**
 
@@ -25,6 +26,10 @@ Donor yang dipakai adalah MiuiCamera dari LineageOS 24.0 `flourite` (Qualcomm, 2
 | `libcamera_ispinterface_jni.xiaomi.so` (night mode) | `UnsatisfiedLinkError: nativeClassInit` saat initFeatureSetting | Library stub ARM64 2.224 byte, 11 method JNI no-op (`queryFeatureSetting` return `null`, dipakai caller tapi hasilnya diabaikan) |
 
 Foto tetap dihasilkan oleh HAL kamera; yang dilewati hanya jalur post-processing yang tidak kompatibel.
+
+### Slow motion
+
+Vendor tanzanite tidak punya tag `com.xiaomi.camera.supportedfeatures.CamSupportedSlowMotion`. MiuiCamera tetap merekam HSR 120fps (HAL mendukung 1280x720@120), tetapi tidak menulis metadata `SlowMotion_Data`, sehingga galeri memutar file 120fps itu kecepatan normal. `slowmo_watch.sh` memantau `DCIM/Camera/*_HSR_120.mp4` dan menulis ulang timing `stts` (750 → 3000 tick @90000 timescale) sehingga video menjadi 30fps / 4× lambat. Proses ini butuh beberapa detik hingga ~30 detik tergantung jumlah entri.
 
 ## Build
 
@@ -42,7 +47,7 @@ Lalu:
 
 ```sh
 cd camera
-python build_module.py --files files --output ../miuicamera_tanzanite_v1.5_ksu_magisk.zip
+python build_module.py --files files --output ../miuicamera_tanzanite_v1.6_ksu_magisk.zip
 ```
 
 Atau patch manual:
@@ -61,15 +66,17 @@ Flash zip lewat aplikasi Magisk atau KernelSU, lalu reboot. Modul otomatis:
 
 - memberi runtime permission MiuiCamera
 - menetapkan `debug.anc.yuvsiq.emptysdk=1`
+- menjalankan watcher slow-motion yang me-retime file `*_HSR_120.mp4` baru
 
 Jangan pasang dua kali di device yang sudah memakai modul ini lewat `meta-overlayfs` — bisa dobel overlay.
 
-Prebuilt: [`miuicamera_tanzanite_v1.5_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.1.0/miuicamera_tanzanite_v1.5_ksu_magisk.zip)
+Prebuilt: [`miuicamera_tanzanite_v1.6_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.2.0/miuicamera_tanzanite_v1.6_ksu_magisk.zip)
 
 ## Keterbatasan
 
 - Efek MIA (beauty, HDR fusion) dimatikan.
 - Mode malam bisa jepret tanpa FC, tetapi tanpa fusion SuperNight Xiaomi — hasilnya foto low-light langsung dari HAL.
+- Slow motion adalah retime 120fps → 30fps, bukan interpolasi/MEIN Xiaomi; track audio dinonaktifkan agar tidak terputus di tengah.
 - MFNR MediaTek dimatikan.
 - Foto adalah keluaran langsung HAL.
 - Belum diuji di ROM selain Halcyon/AOSP tanzanite.

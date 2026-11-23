@@ -37,6 +37,7 @@ DONOR = [
 ]
 
 STATIC = [
+    'slowmo_watch.sh',
     'customize.sh',
     'module.prop',
     'service.sh',
@@ -51,7 +52,7 @@ def main():
     ap.add_argument('--files', type=Path, default=ROOT / 'files',
                     help='directory with donor binaries')
     ap.add_argument('--output', type=Path,
-                    default=REPO / 'miuicamera_tanzanite_v1.5_ksu_magisk.zip')
+                    default=REPO / 'miuicamera_tanzanite_v1.6_ksu_magisk.zip')
     a = ap.parse_args()
 
     missing = [n for n in DONOR if not (a.files / n).is_file()]

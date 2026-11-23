@@ -13,5 +13,7 @@ fi
 set_perm_recursive "$MODPATH/system/priv-app/MiuiCamera" 0 0 0755 0644
 set_perm_recursive "$MODPATH/system/lib64" 0 0 0755 0644
 set_perm_recursive "$MODPATH/system/etc" 0 0 0755 0644
+set_perm "$MODPATH/slowmo_watch.sh" 0 0 0755
 
+ui_print "- Slow-mo HSR_120 akan di-retime otomatis jadi 4x lambat."
 ui_print "- Reboot untuk mengaktifkan module."
