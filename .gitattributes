@@ -1,0 +1,8 @@
+# Shell scripts are executed by Android's sh: CRLF breaks them (it already
+# happened once with slowmo_watch.sh).  Force LF in the repository and in the
+# working tree regardless of core.autocrlf.
+*.sh    text eol=lf
+*.prop  text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf
+*.xml   text eol=lf

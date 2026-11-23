@@ -1,38 +1,53 @@
 #!/usr/bin/env python3
 """
-Build an EvoX/AOSP-compatible MiuiCamera.apk.
+Make MiuiCamera.apk run on a stock/AOSP framework.
 
-The Xiaomi camera app calls the hidden API
+The Xiaomi camera calls the hidden API
+
     CameraCharacteristics.getNativeCopy()
-while collecting vendor CaptureRequest keys.  Some custom ROMs (notably
-Evolution X) ship a framework.jar without that @hide method, so the app
-dies with:
+
+while building its vendor CaptureRequest key map:
+
+    n9.f.<init>  ->  eq.b.c(CameraCharacteristics)
+
+On ROMs whose framework.jar was built without that @hide method (Evolution X
+and several other AOSP forks) the call dies with
 
     java.lang.NoSuchMethodError: No virtual method getNativeCopy()
     ... at eq.b.c -> n9.f.<init>
 
-The caller already has a fallback that uses the public API
-    CameraCharacteristics.getAvailableCaptureRequestKeys()
-right after the vendor-key loop.  We redirect execution straight to that
-fallback, so no hidden API is touched.  The APK is patched in place (the
-dex entries are STORED, so no recompression / zipalign loss) and the dex
-checksum, dex SHA-1, and ZIP CRCs are repaired afterwards.
+The same method already contains a public fallback right after the vendor-key
+loop: CameraCharacteristics.getAvailableCaptureRequestKeys().  We redirect the
+call straight to that fallback, so the hidden API is never touched.
+
+The patch is byte level and applied to the STORED classes4.dex entry, so the
+APK is never recompressed and the 4 KiB alignment of every native library in
+lib/arm64-v8a stays intact.  Afterwards the dex signature/checksum and the ZIP
+local + central directory CRCs are repaired.
+
+Two things are verified before writing:
+  * the 8 bytes at the call site are exactly invoke + move-result-object, so a
+    mismatched APK version aborts instead of producing a corrupt dex;
+  * the replacement covers BOTH instructions.  Leaving the move-result-object
+    in place would make ART reject the method (a move-result must follow an
+    invoke), which is a crash on every ROM, not just on EvoX.
 """
 
 import argparse
 import hashlib
 import shutil
 import struct
-import sys
 import zlib
 from pathlib import Path
 
-# Offsets inside classes4.dex (verified against androguard + raw bytes).
 DEX_NAME = "classes4.dex"
-CALL_OFF = 0x7AB43C          # invoke-static {v4}, Leq/b;->c(...)
-CALL_BYTES = bytes.fromhex("7110b7a004000c05")  # invoke + move-result-object
-FALLBACK_OFF = 0x7AB488      # invoke-virtual {v4}, getAvailableCaptureRequestKeys()
-PATCH = bytes.fromhex("2826" + "0000" * 3)      # goto +0x26, then 6 nop bytes
+
+# invoke-static {v4}, Leq/b;->c(CameraCharacteristics)  +  move-result-object v5
+CALL_OFF = 0x7AB43C
+CALL_BYTES = bytes.fromhex("7110b7a004000c05")
+
+# goto +0x26 (lands on getAvailableCaptureRequestKeys) + 3 nop code units
+PATCH = bytes.fromhex("2826" + "0000" * 3)
 
 
 def eocd(data: bytearray) -> int:
@@ -59,11 +74,10 @@ def build(source: Path, target: Path) -> None:
     with zipfile.ZipFile(source) as zf:
         info = zf.getinfo(DEX_NAME)
         hdr_off = info.header_offset
-        comp = info.compress_type
         orig_crc = info.CRC
-
-    if comp != 0:
-        raise RuntimeError(f"{DEX_NAME} is not STORED; in-place patch unsafe")
+        dex_size = info.file_size
+        if info.compress_type != 0:
+            raise RuntimeError(f"{DEX_NAME} is not STORED; in-place patch unsafe")
 
     data_off = local_data_offset(buf, hdr_off)
     patch_at = data_off + CALL_OFF
@@ -74,31 +88,24 @@ def build(source: Path, target: Path) -> None:
             f"(expected {CALL_BYTES.hex()}); APK version mismatch"
         )
 
-    # goto +0x26 lands on FALLBACK_OFF.
-    delta = (FALLBACK_OFF - CALL_OFF) // 2
-    if PATCH[1] != delta:
-        raise RuntimeError(f"goto offset mismatch: {PATCH[1]} != {delta}")
     buf[patch_at:patch_at + len(PATCH)] = PATCH
 
-    # Repair dex header: signature = sha1(bytes[32:]), checksum = adler32(bytes[12:]).
-    # Order matters: the SHA-1 occupies offsets 12..32, which the checksum covers.
-    dex = bytes(buf[data_off:data_off + info.file_size])
+    # dex header: signature = sha1(bytes[32:]) at 12, checksum = adler32(bytes[12:]) at 8.
+    # The order matters: the SHA-1 lives inside the range the checksum covers.
+    dex = bytes(buf[data_off:data_off + dex_size])
     buf[data_off + 12:data_off + 32] = hashlib.sha1(dex[32:]).digest()
-    final_dex = bytes(buf[data_off:data_off + info.file_size])
-    struct.pack_into("<I", buf, data_off + 8,
-                     zlib.adler32(final_dex[12:]) & 0xFFFFFFFF)
-    final_dex = bytes(buf[data_off:data_off + info.file_size])
-    new_crc = zlib.crc32(final_dex) & 0xFFFFFFFF
+    dex = bytes(buf[data_off:data_off + dex_size])
+    struct.pack_into("<I", buf, data_off + 8, zlib.adler32(dex[12:]) & 0xFFFFFFFF)
+    dex = bytes(buf[data_off:data_off + dex_size])
+    new_crc = zlib.crc32(dex) & 0xFFFFFFFF
 
-    # Local header CRC.
-    struct.pack_into("<I", buf, hdr_off + 14, new_crc)
+    struct.pack_into("<I", buf, hdr_off + 14, new_crc)   # local header
 
-    # Central directory CRC.
-    eocd_off = eocd(buf)
+    eocd_off = eocd(buf)                                  # central directory
     cd_size = struct.unpack_from("<I", buf, eocd_off + 12)[0]
     pos = struct.unpack_from("<I", buf, eocd_off + 16)[0]
     end = pos + cd_size
-    fixed_cd = False
+    fixed = False
     while pos + 46 <= end and buf[pos:pos + 4] == b"PK\x01\x02":
         nlen = struct.unpack_from("<H", buf, pos + 28)[0]
         xlen = struct.unpack_from("<H", buf, pos + 30)[0]
@@ -109,23 +116,26 @@ def build(source: Path, target: Path) -> None:
             if old != orig_crc:
                 raise RuntimeError(f"central CRC mismatch: {old:#x} != {orig_crc:#x}")
             struct.pack_into("<I", buf, pos + 16, new_crc)
-            fixed_cd = True
+            fixed = True
         pos += 46 + nlen + xlen + clen
-    if not fixed_cd:
+    if not fixed:
         raise RuntimeError("central directory entry not found")
 
     target.write_bytes(buf)
 
+    # ------------------------------------------------------------- verification
     with zipfile.ZipFile(target) as zf:
         bad = zf.testzip()
-        result = zf.read(DEX_NAME)
+        dex = zf.read(DEX_NAME)
     if bad is not None:
         raise RuntimeError(f"zip CRC test failed at {bad}")
-    if result[CALL_OFF:CALL_OFF + len(PATCH)] != PATCH:
+    if dex[CALL_OFF:CALL_OFF + len(PATCH)] != PATCH:
         raise RuntimeError("patch verification failed")
-    if struct.unpack_from("<I", result, 8)[0] != (zlib.adler32(result[12:]) & 0xFFFFFFFF):
+    if struct.unpack_from("<I", dex, 8)[0] != (zlib.adler32(dex[12:]) & 0xFFFFFFFF):
         raise RuntimeError("dex checksum verification failed")
-    print(f"patched {target} ({target.stat().st_size} bytes), "
+    if dex[12:32] != hashlib.sha1(dex[32:]).digest():
+        raise RuntimeError("dex signature verification failed")
+    print(f"patched {target.name}: {target.stat().st_size:,} bytes, "
           f"dex CRC {orig_crc:#x} -> {new_crc:#x}")
 
 
