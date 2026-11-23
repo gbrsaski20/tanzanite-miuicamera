@@ -23,6 +23,7 @@ from pathlib import Path
 from build_isp_stub import build_stub
 from patch_algoup_jni import patch as patch_algoup
 from patch_postproc_client import patch as patch_client
+from patch_evox_apk import build as patch_evox
 
 ROOT = Path(__file__).resolve().parent
 MODULE = ROOT / 'module'
@@ -53,6 +54,8 @@ def main():
                     help='directory with donor binaries')
     ap.add_argument('--output', type=Path,
                     default=REPO / 'miuicamera_tanzanite_v1.9_ksu_magisk.zip')
+    ap.add_argument('--evox', action='store_true',
+                    help='patch MiuiCamera.apk for EvoX/AOSP framework.jar')
     a = ap.parse_args()
 
     missing = [n for n in DONOR if not (a.files / n).is_file()]
@@ -63,9 +66,20 @@ def main():
     client = patch_client((a.files / 'libmicampostproc_client.so').read_bytes())
     isp_stub = build_stub()
 
+    module_dir = ROOT / ('module_evox' if a.evox else 'module')
+    apk = (a.files / 'MiuiCamera.apk').read_bytes()
+    if a.evox:
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as td:
+            src = Path(td) / 'MiuiCamera.apk'
+            dst = Path(td) / 'MiuiCamera_EvoX.apk'
+            src.write_bytes(apk)
+            patch_evox(src, dst)
+            apk = dst.read_bytes()
+
     entries = []
     for rel in STATIC:
-        entries.append((rel, (MODULE / rel).read_bytes()))
+        entries.append((rel, (module_dir / rel).read_bytes()))
 
     entries += [
         ('system/lib64/libcamera_algoup_jni.xiaomi.so', algoup),
@@ -75,8 +89,7 @@ def main():
          (a.files / 'libcamera_mianode_jni.xiaomi.so').read_bytes()),
         ('system/lib64/vendor.xiaomi.hardware.campostproc@1.0.so',
          (a.files / 'vendor.xiaomi.hardware.campostproc@1.0.so').read_bytes()),
-        ('system/priv-app/MiuiCamera/MiuiCamera.apk',
-         (a.files / 'MiuiCamera.apk').read_bytes()),
+        ('system/priv-app/MiuiCamera/MiuiCamera.apk', apk),
         ('system/priv-app/MiuiCamera/lib/arm64/libcamera_algoup_jni.xiaomi.so', algoup),
         ('system/priv-app/MiuiCamera/lib/arm64/libmicampostproc_client.so', client),
         ('system/priv-app/MiuiCamera/lib/arm64/libcamera_ispinterface_jni.xiaomi.so', isp_stub),

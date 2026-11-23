@@ -1,0 +1,6 @@
+id=miuicamera_tanzanite
+name=MiuiCamera for tanzanite (EvoX/AOSP)
+version=1.9-evoz
+versionCode=11
+author=gbrsaski20
+description=Port MiuiCamera (com.android.camera) ke Halcyon/AOSP tanzanite. Kompatibel KernelSU & Magisk. MIA + frame ops di-stub, MFNR di-skip, IspInterface JNI di-stub (Night Mode), HSR_120 di-retime 4x (v1.9 su group fix). Khusus EvoX/AOSP: getNativeCopy() di-skip.

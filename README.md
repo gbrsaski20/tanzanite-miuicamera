@@ -74,7 +74,40 @@ Flash zip lewat aplikasi Magisk atau KernelSU, lalu reboot. Modul otomatis:
 
 Jangan pasang dua kali di device yang sudah memakai modul ini lewat `meta-overlayfs` — bisa dobel overlay.
 
-Prebuilt: [`miuicamera_tanzanite_v1.9_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.3.0/miuicamera_tanzanite_v1.9_ksu_magisk.zip)
+Prebuilt:
+
+- [`miuicamera_tanzanite_v1.9_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.4.0/miuicamera_tanzanite_v1.9_ksu_magisk.zip) — untuk ROM berbasis Xiaomi/HyperOS dan Halcyon (APK asli).
+- [`miuicamera_tanzanite_v1.9_evox_ksu_magisk.zip`](https://github.com/gbrsaski20/tanzanite-miuicamera/releases/download/v1.4.0/miuicamera_tanzanite_v1.9_evox_ksu_magisk.zip) — **khusus Evolution X / ROM AOSP yang framework-nya tidak punya `CameraCharacteristics.getNativeCopy()`** (APK sudah di-patch).
+
+## Dua varian: normal vs EvoX
+
+Beberapa ROM custom (mis. Evolution X) membangun `framework.jar` tanpa method `@hide`
+`CameraCharacteristics.getNativeCopy()`. MiuiCamera memanggilnya saat menyusun daftar
+vendor key, sehingga app langsung mati dengan:
+
+```
+java.lang.NoSuchMethodError: No virtual method
+getNativeCopy()Landroid/hardware/camera2/impl/CameraMetadataNative;
+in class Landroid/hardware/camera2/CameraCharacteristics;
+    at eq.b.c(SourceFile:0)
+    at n9.f.<init>(SourceFile:878)
+```
+
+Varian EvoX memakai APK yang sudah di-patch: pemanggilan `eq.b.c()` diganti `goto`
+langsung ke jalur fallback publik `CameraCharacteristics.getAvailableCaptureRequestKeys()`
+yang sudah ada di kode aslinya. Efeknya hanya daftar vendor key Xiaomi yang tidak terbaca —
+di ROM AOSP key itu memang tidak ada, jadi tidak ada fitur yang hilang secara nyata.
+
+Patch dikerjakan `camera/patch_evox_apk.py` (byte-level, tanpa recompress sehingga
+alignment native library tetap utuh) dan dex checksum/SHA-1 serta CRC ZIP diperbaiki
+ulang. Build ulang varian EvoX:
+
+```
+python build_module.py --evox --files files --output ../miuicamera_tanzanite_v1.9_evox_ksu_magisk.zip
+```
+
+**Pilih salah satu**, jangan pasang dua-duanya: keduanya memakai module id yang sama
+(`miuicamera_tanzanite`) sehingga yang terakhir dipasang akan menggantikan yang lain.
 
 ## Keterbatasan
 
@@ -83,7 +116,8 @@ Prebuilt: [`miuicamera_tanzanite_v1.9_ksu_magisk.zip`](https://github.com/gbrsas
 - Slow motion **tidak benar-benar beres**: file di-retime 120fps → 30fps dan audio dimatikan, tetapi galeri masih menampilkan durasi lama. Dibiarkan karena tidak menyebabkan FC.
 - MFNR MediaTek dimatikan.
 - Foto adalah keluaran langsung HAL.
-- Belum diuji di ROM selain Halcyon/AOSP tanzanite.
+- Varian EvoX belum diuji langsung di perangkat Evolution X (hanya diuji bahwa APK hasil patch tetap valid dan dex-nya lolos verifikasi). Kalau masih ada `NoSuchMethodError` lain, laporkan stack trace-nya.
+- Belum diuji di ROM selain Halcyon/AOSP tanzanite dan varian EvoX di atas.
 
 ## Disclaimer
 
